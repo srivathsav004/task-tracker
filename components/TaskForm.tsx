@@ -13,14 +13,14 @@ import { Loader2 } from 'lucide-react';
 
 const statusOptions: TaskStatus[] = ['Open', 'In-Progress', 'Resolved', 'Closed'];
 const execOptions: string[] = [
-  'hemanth',
-  'sravani',
-  'priya paul',
-  'nabila',
-  'kumar',
-  'hema',
-  'sunanda',
-  'reshma',
+  'Hemanth Kumar Vankadara',
+  'Sravani Konduru',
+  'Priya Paul',
+  'Nabila N',
+  'A Kumar Rao',
+  'Hema Akkipalli',
+  'Kindigeri Sunanda',
+  'P Reshma',
 ];
 
 export default function TaskForm() {
