@@ -10,9 +10,14 @@ import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Download } from 'lucide-react';
+import { Download, Trash2 } from 'lucide-react';
 
-export default function TasksTable() {
+interface TasksTableProps {
+  adminMode?: boolean;
+  showUpdatedAt?: boolean;
+}
+
+export default function TasksTable({ adminMode = false, showUpdatedAt = false }: TasksTableProps) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewAll, setViewAll] = useState(false);
@@ -28,7 +33,7 @@ export default function TasksTable() {
   const fetchTasks = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`/api/tasks/list?all=${viewAll}`);
+      const response = await fetch(`/api/tasks/list?all=${adminMode ? 'true' : String(viewAll)}`);
       if (response.ok) {
         const data = await response.json();
         setTasks(data.tasks);
@@ -44,7 +49,7 @@ export default function TasksTable() {
 
   useEffect(() => {
     fetchTasks();
-  }, [viewAll]);
+  }, [viewAll, adminMode]);
 
   // reset to first page when filters/search change
   useEffect(() => {
@@ -91,6 +96,28 @@ export default function TasksTable() {
     }
   };
 
+  const handleDelete = async (taskId: number) => {
+    if (!adminMode) return;
+    const prev = tasks;
+    // optimistic remove
+    setTasks((ts) => ts.filter(t => t.id !== taskId));
+    try {
+      const res = await fetch('/api/tasks/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: taskId }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to delete');
+      }
+      toast({ title: 'Task deleted' });
+    } catch (e: any) {
+      setTasks(prev);
+      toast({ title: 'Delete failed', description: e?.message || 'Please try again.', variant: 'destructive' });
+    }
+  };
+
   const filtered = useMemo(() => {
     const s = search.trim().toLowerCase();
     return tasks.filter(t => {
@@ -126,7 +153,8 @@ export default function TasksTable() {
         'Status',
         'Resolution Date',
         'Deadline',
-        ...(viewAll ? ['Created By'] : []),
+        ...(adminMode || viewAll ? ['Created By'] : []),
+        ...(showUpdatedAt ? ['Updated At'] : []),
       ];
       const rows = filtered.map(t => [
         formatDate(t.date_raised!),
@@ -136,7 +164,8 @@ export default function TasksTable() {
         t.current_status ?? '',
         formatDate(t.resolution_date!),
         formatDate(t.deadline!),
-        ...(viewAll ? [t.user_name ?? ''] : []),
+        ...(adminMode || viewAll ? [t.user_name ?? ''] : []),
+        ...(showUpdatedAt ? [formatDate(t.updated_at!)] : []),
       ]);
       const csv = [headers, ...rows]
         .map(r => r.map(csvEscape).join(','))
@@ -146,7 +175,7 @@ export default function TasksTable() {
       const a = document.createElement('a');
       const ts = new Date().toISOString().replace(/[:T]/g, '-').slice(0, 19);
       a.href = url;
-      a.download = `${viewAll ? 'all-tasks' : 'my-tasks'}-${ts}.csv`;
+      a.download = `${adminMode ? 'admin-tasks' : (viewAll ? 'all-tasks' : 'my-tasks')}-${ts}.csv`;
       a.click();
       URL.revokeObjectURL(url);
       toast({ title: 'Download started', description: 'Your CSV is being downloaded.' });
@@ -162,27 +191,31 @@ export default function TasksTable() {
         <div className="flex items-center justify-between">
           <div>
             <CardTitle>
-              {viewAll ? 'All Tasks' : 'My Tasks'}
+              {adminMode ? 'All Tasks (Admin)' : (viewAll ? 'All Tasks' : 'My Tasks')}
             </CardTitle>
             <CardDescription>
-              {viewAll ? 'View tasks from all users' : 'View your personal tasks'}
+              {adminMode ? 'Manage tasks from all users' : (viewAll ? 'View tasks from all users' : 'View your personal tasks')}
             </CardDescription>
           </div>
           <div className="flex items-center space-x-2">
-            <Button
-              variant={!viewAll ? "default" : "outline"}
-              onClick={() => setViewAll(false)}
-              className={!viewAll ? "bg-blue-600 hover:bg-blue-700" : ""}
-            >
-              My Tasks
-            </Button>
-            <Button
-              variant={viewAll ? "default" : "outline"}
-              onClick={() => setViewAll(true)}
-              className={viewAll ? "bg-blue-600 hover:bg-blue-700" : ""}
-            >
-              All Tasks
-            </Button>
+            {!adminMode && (
+              <>
+                <Button
+                  variant={!viewAll ? "default" : "outline"}
+                  onClick={() => setViewAll(false)}
+                  className={!viewAll ? "bg-blue-600 hover:bg-blue-700" : ""}
+                >
+                  My Tasks
+                </Button>
+                <Button
+                  variant={viewAll ? "default" : "outline"}
+                  onClick={() => setViewAll(true)}
+                  className={viewAll ? "bg-blue-600 hover:bg-blue-700" : ""}
+                >
+                  All Tasks
+                </Button>
+              </>
+            )}
             <Button
               variant="outline"
               size="icon"
@@ -237,7 +270,9 @@ export default function TasksTable() {
                   <TableHead>Status</TableHead>
                   <TableHead>Resolution Date</TableHead>
                   <TableHead>Deadline</TableHead>
-                  {viewAll && <TableHead>Created By</TableHead>}
+                  {(adminMode || viewAll) && <TableHead>Created By</TableHead>}
+                  {showUpdatedAt && <TableHead>Updated At</TableHead>}
+                  {adminMode && <TableHead>Actions</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -252,7 +287,9 @@ export default function TasksTable() {
                     <TableCell><Skeleton className="h-6 w-24" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                     <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                    {viewAll && <TableCell><Skeleton className="h-4 w-28" /></TableCell>}
+                    {(adminMode || viewAll) && <TableCell><Skeleton className="h-4 w-28" /></TableCell>}
+                    {showUpdatedAt && <TableCell><Skeleton className="h-4 w-24" /></TableCell>}
+                    {adminMode && <TableCell><Skeleton className="h-6 w-6" /></TableCell>}
                   </TableRow>
                 ))}
               </TableBody>
@@ -279,7 +316,9 @@ export default function TasksTable() {
                   <TableHead>Status</TableHead>
                   <TableHead>Resolution Date</TableHead>
                   <TableHead>Deadline</TableHead>
-                  {viewAll && <TableHead>Created By</TableHead>}
+                  {(adminMode || viewAll) && <TableHead>Created By</TableHead>}
+                  {showUpdatedAt && <TableHead>Updated At</TableHead>}
+                  {adminMode && <TableHead>Actions</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -294,7 +333,7 @@ export default function TasksTable() {
                     </TableCell>
                     <TableCell>{task.customer_account_exec || '-'}</TableCell>
                     <TableCell>
-                      {viewAll ? (
+                      {(!adminMode && viewAll) ? (
                         <Badge className={getStatusColor(task.current_status)}>
                           {task.current_status}
                         </Badge>
@@ -319,7 +358,21 @@ export default function TasksTable() {
                     </TableCell>
                     <TableCell>{formatDate(task.resolution_date!)}</TableCell>
                     <TableCell>{formatDate(task.deadline!)}</TableCell>
-                    {viewAll && <TableCell>{task.user_name}</TableCell>}
+                    {(adminMode || viewAll) && <TableCell>{task.user_name}</TableCell>}
+                    {showUpdatedAt && <TableCell>{formatDate(task.updated_at!)}</TableCell>}
+                    {adminMode && (
+                      <TableCell>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="text-red-600 hover:text-red-700"
+                          onClick={() => handleDelete(task.id)}
+                          title="Delete task"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>
