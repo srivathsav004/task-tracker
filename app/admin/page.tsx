@@ -113,6 +113,34 @@ function LogsTable() {
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
+  const exportCsv = async () => {
+    try {
+      const params = new URLSearchParams();
+      if (type) params.set('type', type);
+      if (q) params.set('q', q);
+      if (from) params.set('from', from);
+      if (to) params.set('to', to);
+      const res = await fetch(`/api/logs/export?${params.toString()}`, {
+        method: 'GET'
+      });
+      if (!res.ok) throw new Error('Export failed');
+      const blob = await res.blob();
+      const disposition = res.headers.get('content-disposition') || '';
+      const match = disposition.match(/filename="?([^";]+)"?/i);
+      const filename = match?.[1] || 'logs_export.csv';
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error('Export CSV error:', e);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col lg:flex-row gap-3 lg:items-end bg-white p-3 rounded-md border">
@@ -152,6 +180,7 @@ function LogsTable() {
           </select>
         </div>
         <div className="flex gap-2 ml-auto">
+          <button className="h-9 px-3 border rounded-md" onClick={exportCsv}>Export CSV</button>
           <button className="h-9 px-3 border rounded-md" onClick={() => { setType(''); setQ(''); setFrom(''); setTo(''); setPage(1); }}>Reset</button>
           <button className="h-9 px-3 border rounded-md bg-gray-900 text-white" onClick={() => { setPage(1); fetchLogs(); }}>Apply</button>
         </div>
