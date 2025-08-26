@@ -185,10 +185,10 @@ function LogsTable() {
           <Input type="date" className="h-9" value={to} onChange={(e) => { setPage(1); setTo(e.target.value); }} />
         </div>
 
-        <div className="flex flex-col min-w-[150px]">
+        <div className="flex flex-col min-w-[120px]">
           <Label className="text-xs text-muted-foreground">Page size</Label>
           <Select value={String(pageSize)} onValueChange={(v) => { setPage(1); setPageSize(parseInt(v, 10)); }}>
-            <SelectTrigger className="h-9">
+            <SelectTrigger className="h-9 w-[110px]">
               <SelectValue placeholder="Rows" />
             </SelectTrigger>
             <SelectContent>
@@ -200,9 +200,10 @@ function LogsTable() {
         </div>
 
         <div className="flex gap-2 ml-auto">
-          <Button variant="outline" onClick={exportCsv} className="gap-2"><Download className="h-4 w-4" /> Export CSV</Button>
+          <Button variant="outline" size="icon" onClick={exportCsv} title="Download CSV">
+            <Download className="h-4 w-4" />
+          </Button>
           <Button variant="outline" onClick={() => { setType('all'); setQ(''); setFrom(''); setTo(''); setPage(1); }}>Reset</Button>
-          <Button className="bg-gray-900 text-white" onClick={() => { setPage(1); fetchLogs(); }}>Apply</Button>
         </div>
       </div>
 
