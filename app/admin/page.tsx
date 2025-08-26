@@ -6,6 +6,11 @@ import TaskForm from '@/components/TaskForm';
 import TasksTable from '@/components/TasksTable';
 import AdminSidebar from '@/components/AdminSidebar';
 import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 export default function AdminPage() {
@@ -42,6 +47,8 @@ export default function AdminPage() {
       ) : (
         <div className="min-h-screen bg-gray-50 flex">
           <AdminSidebar activeTab={activeTab} onTabChange={setActiveTab} />
+          {/* Mobile top header */}
+          <div className="lg:hidden fixed top-0 left-0 right-0 h-14 bg-white border-b z-20 flex items-center px-4 text-sm font-semibold">Task Tracker · Admin</div>
           <main className="flex-1 p-4 lg:p-8 pt-20 lg:pt-8">
             <div className="max-w-7xl mx-auto space-y-6">
               {activeTab === 'submit' && <TaskForm />}
@@ -61,7 +68,7 @@ export default function AdminPage() {
 function LogsTable() {
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [type, setType] = useState<string>('');
+  const [type, setType] = useState<string>('all');
   const [q, setQ] = useState<string>('');
   const [from, setFrom] = useState<string>('');
   const [to, setTo] = useState<string>('');
@@ -74,7 +81,7 @@ function LogsTable() {
     setLoading(true);
     try {
       const params = new URLSearchParams();
-      if (type) params.set('type', type);
+      if (type && type !== 'all') params.set('type', type);
       if (q) params.set('q', q);
       if (from) params.set('from', new Date(from).toISOString());
       if (to) params.set('to', new Date(to).toISOString());
@@ -144,45 +151,58 @@ function LogsTable() {
   return (
     <div className="space-y-4">
       <div className="flex flex-col lg:flex-row gap-3 lg:items-end bg-white p-3 rounded-md border">
-        <div className="flex flex-col">
-          <label className="text-xs text-muted-foreground">Type</label>
-          <select
-            className="border rounded-md h-9 px-2"
-            value={type}
-            onChange={(e) => { setPage(1); setType(e.target.value); }}
-          >
-            <option value="">All</option>
-            <option value="created">Created</option>
-            <option value="status_update">Status Update</option>
-          </select>
+        <div className="flex flex-col min-w-[180px]">
+          <Label className="text-xs text-muted-foreground">Type</Label>
+          <Select value={type} onValueChange={(v) => { setPage(1); setType(v); }}>
+            <SelectTrigger className="h-9">
+              <SelectValue placeholder="All" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All</SelectItem>
+              <SelectItem value="created">Created</SelectItem>
+              <SelectItem value="status_update">Status Update</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
+
         <div className="flex-1 flex flex-col">
-          <label className="text-xs text-muted-foreground">Search</label>
-          <input
-            className="border rounded-md h-9 px-2"
-            placeholder="Task id, client or user"
+          <Label className="text-xs text-muted-foreground">Search</Label>
+          <Input
+            className="h-9"
+            placeholder="Task id, client, user, account exec..."
             value={q}
             onChange={(e) => setQ(e.target.value)}
           />
         </div>
-        <div className="flex flex-col">
-          <label className="text-xs text-muted-foreground">From</label>
-          <input type="date" className="border rounded-md h-9 px-2" value={from} onChange={(e) => { setPage(1); setFrom(e.target.value); }} />
+
+        <div className="flex flex-col min-w-[180px]">
+          <Label className="text-xs text-muted-foreground">From</Label>
+          <Input type="date" className="h-9" value={from} onChange={(e) => { setPage(1); setFrom(e.target.value); }} />
         </div>
-        <div className="flex flex-col">
-          <label className="text-xs text-muted-foreground">To</label>
-          <input type="date" className="border rounded-md h-9 px-2" value={to} onChange={(e) => { setPage(1); setTo(e.target.value); }} />
+
+        <div className="flex flex-col min-w-[180px]">
+          <Label className="text-xs text-muted-foreground">To</Label>
+          <Input type="date" className="h-9" value={to} onChange={(e) => { setPage(1); setTo(e.target.value); }} />
         </div>
-        <div className="flex flex-col">
-          <label className="text-xs text-muted-foreground">Page size</label>
-          <select className="border rounded-md h-9 px-2" value={pageSize} onChange={(e) => { setPage(1); setPageSize(parseInt(e.target.value, 10)); }}>
-            {[10,20,30,50,100].map(n => <option key={n} value={n}>{n}</option>)}
-          </select>
+
+        <div className="flex flex-col min-w-[150px]">
+          <Label className="text-xs text-muted-foreground">Page size</Label>
+          <Select value={String(pageSize)} onValueChange={(v) => { setPage(1); setPageSize(parseInt(v, 10)); }}>
+            <SelectTrigger className="h-9">
+              <SelectValue placeholder="Rows" />
+            </SelectTrigger>
+            <SelectContent>
+              {[10,20,30,50,100].map(n => (
+                <SelectItem key={n} value={String(n)}>{n}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
+
         <div className="flex gap-2 ml-auto">
-          <button className="h-9 px-3 border rounded-md" onClick={exportCsv}>Export CSV</button>
-          <button className="h-9 px-3 border rounded-md" onClick={() => { setType(''); setQ(''); setFrom(''); setTo(''); setPage(1); }}>Reset</button>
-          <button className="h-9 px-3 border rounded-md bg-gray-900 text-white" onClick={() => { setPage(1); fetchLogs(); }}>Apply</button>
+          <Button variant="outline" onClick={exportCsv} className="gap-2"><Download className="h-4 w-4" /> Export CSV</Button>
+          <Button variant="outline" onClick={() => { setType('all'); setQ(''); setFrom(''); setTo(''); setPage(1); }}>Reset</Button>
+          <Button className="bg-gray-900 text-white" onClick={() => { setPage(1); fetchLogs(); }}>Apply</Button>
         </div>
       </div>
 
