@@ -67,6 +67,20 @@ export async function POST(request: NextRequest) {
       ]
     );
 
+    // Best-effort activity log (if table exists)
+    try {
+      const createdTaskId = result.rows[0]?.id;
+      if (createdTaskId) {
+        await pool.query(
+          `INSERT INTO task_logs (task_id, actor_user_id, action, details, at)
+           VALUES ($1, $2, 'created', 'task created', NOW())`,
+          [createdTaskId, auth.userId]
+        );
+      }
+    } catch (_) {
+      // ignore if task_logs does not exist
+    }
+
     return NextResponse.json({ 
       message: 'Task created successfully',
       task: result.rows[0]
