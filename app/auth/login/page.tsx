@@ -34,8 +34,14 @@ export default function LoginPage() {
       });
 
       if (response.ok) {
+        const data = await response.json().catch(() => ({} as any));
+        const email = data?.user?.email as string | undefined;
         toast({ title: 'Welcome back' });
-        router.push('/dashboard');
+        if (email === 'hemanth.v@trst01.com') {
+          router.push('/admin');
+        } else {
+          router.push('/dashboard');
+        }
       } else {
         const error = await response.json().catch(() => ({}));
         toast({ title: 'Login failed', description: error.error || error.detail || 'Please try again.', variant: 'destructive' });
