@@ -16,6 +16,7 @@ export interface Task {
   deadline?: string;
   remarks?: string;
   user_name?: string;
+  updated_at?: string;
 }
 
 export type TaskStatus = 'Open' | 'In-Progress' | 'Resolved' | 'Closed';
