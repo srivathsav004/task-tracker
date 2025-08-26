@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Task } from '@/types';
+import { Task, TaskStatus } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
@@ -21,6 +21,9 @@ export default function TasksTable() {
   const [status, setStatus] = useState<string>('all');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [updatingId, setUpdatingId] = useState<number | null>(null);
+
+  const statusOptions: TaskStatus[] = ['Open', 'In-Progress', 'Resolved', 'Closed'];
 
   const fetchTasks = async () => {
     setLoading(true);
@@ -61,6 +64,31 @@ export default function TasksTable() {
   const formatDate = (dateString: string) => {
     if (!dateString) return '-';
     return new Date(dateString).toLocaleDateString();
+  };
+
+  const handleStatusChange = async (taskId: number, newStatus: TaskStatus) => {
+    const prev = tasks;
+    // optimistic update
+    setTasks((ts) => ts.map(t => t.id === taskId ? { ...t, current_status: newStatus } : t));
+    setUpdatingId(taskId);
+    try {
+      const res = await fetch('/api/tasks/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: taskId, current_status: newStatus }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to update');
+      }
+      toast({ title: 'Status updated' });
+    } catch (e: any) {
+      // revert on failure
+      setTasks(prev);
+      toast({ title: 'Update failed', description: e?.message || 'Please try again.', variant: 'destructive' });
+    } finally {
+      setUpdatingId(null);
+    }
   };
 
   const filtered = useMemo(() => {
@@ -266,9 +294,28 @@ export default function TasksTable() {
                     </TableCell>
                     <TableCell>{task.customer_account_exec || '-'}</TableCell>
                     <TableCell>
-                      <Badge className={getStatusColor(task.current_status)}>
-                        {task.current_status}
-                      </Badge>
+                      {viewAll ? (
+                        <Badge className={getStatusColor(task.current_status)}>
+                          {task.current_status}
+                        </Badge>
+                      ) : (
+                        <Select
+                          value={task.current_status}
+                          onValueChange={(v) => handleStatusChange(task.id, v as TaskStatus)}
+                          disabled={updatingId === task.id}
+                        >
+                          <SelectTrigger className="w-[160px]">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {statusOptions.map((s) => (
+                              <SelectItem key={s} value={s}>
+                                {s}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
                     </TableCell>
                     <TableCell>{formatDate(task.resolution_date!)}</TableCell>
                     <TableCell>{formatDate(task.deadline!)}</TableCell>
