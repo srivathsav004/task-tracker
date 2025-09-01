@@ -19,7 +19,8 @@ export async function POST(request: NextRequest) {
       current_status,
       resolution_date,
       deadline,
-      remarks
+      remarks,
+      source_of_query
     } = await request.json();
 
     // Validate required fields (all mandatory)
@@ -32,6 +33,7 @@ export async function POST(request: NextRequest) {
       resolution_date,
       deadline,
       remarks,
+      source_of_query,
     } as Record<string, unknown>;
 
     const missing = Object.entries(entries)
@@ -52,8 +54,8 @@ export async function POST(request: NextRequest) {
     const result = await pool.query(
       `INSERT INTO tasks (
         user_id, date_raised, client_name, description,
-        customer_account_exec, current_status, resolution_date, deadline, remarks
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
+        customer_account_exec, current_status, resolution_date, deadline, remarks, source
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
       [
         auth.userId,
         date_raised,
@@ -63,7 +65,8 @@ export async function POST(request: NextRequest) {
         current_status,
         resolution_date,
         deadline,
-        remarks
+        remarks,
+        source_of_query
       ]
     );
 
