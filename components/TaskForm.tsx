@@ -20,7 +20,7 @@ const execOptions: string[] = [
   'A Kumar Rao',
   'Hema Akkipalli',
   'Kindigeri Sunanda',
-  'P Reshma',
+  'P Reshama',
 ];
 
 export default function TaskForm() {
@@ -33,8 +33,11 @@ export default function TaskForm() {
     current_status: '',
     resolution_date: '',
     deadline: '',
-    remarks: ''
+    remarks: '',
+    source_of_query: '',
+    other_source: ''
   });
+  const [showOtherSource, setShowOtherSource] = useState(false);
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -42,6 +45,12 @@ export default function TaskForm() {
     setLoading(true);
 
     try {
+      // Prepare final form data
+      const submitData = { ...formData };
+      if (formData.source_of_query === 'others' && formData.other_source) {
+        submitData.source_of_query = formData.other_source;
+      }
+
       // Client-side validation: all fields required
       const requiredFields = [
         'date_raised',
@@ -51,7 +60,8 @@ export default function TaskForm() {
         'current_status',
         'resolution_date',
         'deadline',
-        'remarks'
+        'remarks',
+        'source_of_query'
       ] as const;
       const missing = requiredFields.filter((f) => !String((formData as any)[f] || '').trim());
       if (missing.length > 0) {
@@ -68,7 +78,7 @@ export default function TaskForm() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(submitData),
       });
 
       if (response.ok) {
@@ -81,8 +91,11 @@ export default function TaskForm() {
           current_status: '',
           resolution_date: '',
           deadline: '',
-          remarks: ''
+          remarks: '',
+          source_of_query: '',
+          other_source: ''
         });
+        setShowOtherSource(false);
       } else {
         const error = await response.json();
         toast({ title: 'Failed to create task', description: error.error || 'Please try again.', variant: 'destructive' });
@@ -95,6 +108,13 @@ export default function TaskForm() {
   };
 
   const handleChange = (name: string, value: string) => {
+    if (name === 'source_of_query') {
+      setShowOtherSource(value === 'others');
+      if (value !== 'others') {
+        setFormData(prev => ({ ...prev, [name]: value, other_source: '' }));
+        return;
+      }
+    }
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
@@ -111,6 +131,36 @@ export default function TaskForm() {
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <Label htmlFor="source_of_query">Source of Query *</Label>
+              <Select
+                value={formData.source_of_query}
+                onValueChange={(value) => handleChange('source_of_query', value)}
+                required
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select source" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="whatsapp">WhatsApp</SelectItem>
+                  <SelectItem value="mail">Mail</SelectItem>
+                  <SelectItem value="verbal">Verbal Communication</SelectItem>
+                  <SelectItem value="others">Others</SelectItem>
+                </SelectContent>
+              </Select>
+              {showOtherSource && (
+                <div className="mt-2">
+                  <Input
+                    id="other_source"
+                    value={formData.other_source}
+                    onChange={(e) => handleChange('other_source', e.target.value)}
+                    placeholder="Please specify source"
+                    disabled={loading}
+                    required
+                  />
+                </div>
+              )}
+            </div>
             <div className="space-y-2">
               <Label htmlFor="date_raised">Date Raised *</Label>
               <Input
@@ -237,7 +287,9 @@ export default function TaskForm() {
                   current_status: '',
                   resolution_date: '',
                   deadline: '',
-                  remarks: ''
+                  remarks: '',
+                  source_of_query: '',
+                  other_source: ''
                 });
                 toast({ title: 'Form reset' });
               }}
